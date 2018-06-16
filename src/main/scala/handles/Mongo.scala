@@ -67,7 +67,7 @@ object Mongo {
     logger.info(s"${Console.GREEN} Removed: ${doc.getUpdateDescription.getRemovedFields}")
 
     completeTask(ElasticApi.updateExistingIndex(updatedId, "bank/account", im.fromDocument(doc.getFullDocument)))
-    //TODO check if works with only updatesd fields passed through
+    //TODO check if works with only updated fields passed through
   }
 
   private def storeNewIndex(doc: ChangeStreamDocument[Document]): Unit = {
@@ -80,12 +80,12 @@ object Mongo {
   }
 
   private def deleteIndex(doc: ChangeStreamDocument[Document]): Unit = {
-    val deletedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+    val deletedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString //TODO wrong id real index id is created on storing of new index item
 
     logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
     logger.info(s"${Console.GREEN} Deleted: $deletedId")
 
     completeTask(ElasticApi.deleteFromIndex(deletedId, "bank/account"))
-    //TODO add staticly defined enum Mappings for collectionName to Elastic index name
+    //TODO add staticly defined enum Mappings for collectionName to Elastic index name. Perhaps store in Mongo Meta Data obj?
   }
 }

@@ -25,6 +25,13 @@ object Http {
          ElasticApi.searchQ(indx, searchQuery)
        )
      }
-   }
+   } ~
+  path("delete") {
+    get {
+      parameters('id.as[String], 'indx.as[String])((id,indx) =>
+        ElasticApi.deleteFromIndex(id, indx)
+      )
+    }
+  }
 
 }
