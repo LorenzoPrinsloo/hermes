@@ -1,12 +1,12 @@
 package interfaces
 
-object Indexable {
+object Serializable {
 
-  sealed trait ElasticIndexable {
-    def _id: ObjectId
+  sealed trait ElasticSerializable {
+    def _id: String
   }
 
-  case class IAccount(_id: ObjectId,
+  case class SAccount(_id: String,
                       account_number: Double,
                       balance: Double,
                       firstName: String,
@@ -17,9 +17,5 @@ object Indexable {
                       employer: String,
                       email: String,
                       city: String,
-                      state: String
-                    ) extends ElasticIndexable
-
-  case class ObjectId(ids: Seq[Id])
-  case class Id(oid: String)
+                      state: String) extends ElasticSerializable
 }

@@ -2,8 +2,8 @@ package handles
 
 import api.ElasticApi
 import com.mongodb.client.model.changestream.FullDocument
-import interfaces.Indexable.Account
-import org.mongodb.scala.{MongoClient, ScalaObservable}
+import interfaces.Indexable.IAccount
+import org.mongodb.scala.{ChangeStreamObservable, MongoClient, ScalaObservable}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.changestream._
 import org.mongodb.scala.model.Aggregates._
@@ -16,7 +16,7 @@ import handles.Monix.completeTask
 
 object Mongo {
 
-  implicit val im: DocumentParser[Account, Document] = MongoParser.create[Account]
+  implicit val im: DocumentParser[IAccount, Document] = MongoParser.create[IAccount]
 
   def connect(): Unit = {
     val mongoClient = MongoClient("mongodb://localhost:9600")//27017
@@ -51,6 +51,8 @@ object Mongo {
 
   private def replaceExistingIndex(doc: ChangeStreamDocument[Document]): Unit = {
     val replacedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+    //TODO wrong id real index id is created on storing of new index item. store index somewhere on mongo item
+    // Apparently overriding _id field of mongo document with elastic id shoudl resolve but check execution order to make sure it works
 
     logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
     logger.info(s"${Console.GREEN} Data: ${doc.getFullDocument}")
@@ -61,6 +63,8 @@ object Mongo {
 
   private def updateExistingIndex(doc: ChangeStreamDocument[Document]): Unit = {
     val updatedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+    //TODO wrong id real index id is created on storing of new index item. store index somewhere on mongo item.
+    // Apparently overriding _id field of mongo document with elastic id shoudl resolve but check execution order to make sure it works
 
     logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
     logger.info(s"${Console.GREEN} Updated: ${doc.getUpdateDescription.getUpdatedFields}")
@@ -80,7 +84,9 @@ object Mongo {
   }
 
   private def deleteIndex(doc: ChangeStreamDocument[Document]): Unit = {
-    val deletedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString //TODO wrong id real index id is created on storing of new index item
+    val deletedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+    //TODO wrong id real index id is created on storing of new index item. store index somewhere on mongo item
+    // Apparently overriding _id field of mongo document with elastic id should resolve but check execution order to make sure it works
 
     logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
     logger.info(s"${Console.GREEN} Deleted: $deletedId")
