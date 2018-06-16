@@ -11,9 +11,9 @@ import scala.util.{Failure, Success}
 
 object AkkaHttp {
 
-  implicit def completeTask[A <: AnyRef](x: Task[A])(implicit formats: Formats, scheduler: Scheduler): Route = {
+  implicit def completeHttpTask[A <: AnyRef](x: Task[A])(implicit formats: Formats, scheduler: Scheduler): Route = {
     onComplete(x.runAsync) {
-      case Success(res) => complete(write(res))
+      case Success(res) => complete(/*write(res)*/ res.toString)
       case Failure(err) => complete(err.getMessage)
     }
   }

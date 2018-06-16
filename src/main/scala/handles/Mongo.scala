@@ -1,13 +1,22 @@
 package handles
 
+import api.ElasticApi
 import com.mongodb.client.model.changestream.FullDocument
+import interfaces.Indexable.Account
 import org.mongodb.scala.{MongoClient, ScalaObservable}
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.changestream._
 import org.mongodb.scala.model.Aggregates._
 import main.Main.logger
+import api.Http.formats
+import handles.mongo.MongoParser
+import monix.execution.Scheduler.Implicits.global
+import handles.mongo.MongoParser.DocumentParser
+import handles.Monix.completeTask
 
 object Mongo {
+
+  implicit val im: DocumentParser[Account, Document] = MongoParser.create[Account]
 
   def connect(): Unit = {
     val mongoClient = MongoClient("mongodb://localhost:9600")//27017
@@ -31,26 +40,52 @@ object Mongo {
     def onNext(doc: ChangeStreamDocument[Document]): Unit = {
 
       doc.getOperationType.getValue match {
-        case "replace" => {
-          logger.info(s"${Console.BLUE} ${doc.getOperationType.getValue.toUpperCase}")
-          logger.info(s"${Console.GREEN} Data: ${doc.getFullDocument}")
-        }
-        case "insert" => {
-          logger.info(s"${Console.BLUE} ${doc.getOperationType.getValue.toUpperCase}")
-          logger.info(s"${Console.GREEN} Data: ${doc.getFullDocument}")
-        }
-        case "update" => {
-          logger.info(s"${Console.BLUE} ${doc.getOperationType.getValue.toUpperCase}")
-          logger.info(s"${Console.GREEN} Updated: ${doc.getUpdateDescription.getUpdatedFields}")
-          logger.info(s"${Console.GREEN} Removed: ${doc.getUpdateDescription.getRemovedFields}")
-        }
-        case "delete" => {
-          logger.info(s"${Console.BLUE} ${doc.getOperationType.getValue.toUpperCase}")
-          logger.info(s"${Console.GREEN} Deleted: ${doc.getDocumentKey}")
-        }
+        case "replace" => replaceExistingIndex(doc)
+        case "insert" => storeNewIndex(doc)
+        case "update" => updateExistingIndex(doc)
+        case "delete" => deleteIndex(doc)
         case _ => logger.info(s"${Console.MAGENTA} Unsupported change event")
       }
     }
+  }
 
+  private def replaceExistingIndex(doc: ChangeStreamDocument[Document]): Unit = {
+    val replacedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+
+    logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
+    logger.info(s"${Console.GREEN} Data: ${doc.getFullDocument}")
+
+    completeTask(ElasticApi.updateExistingIndex(replacedId, "bank/account", im.fromDocument(doc.getFullDocument)))
+
+  }
+
+  private def updateExistingIndex(doc: ChangeStreamDocument[Document]): Unit = {
+    val updatedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+
+    logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
+    logger.info(s"${Console.GREEN} Updated: ${doc.getUpdateDescription.getUpdatedFields}")
+    logger.info(s"${Console.GREEN} Removed: ${doc.getUpdateDescription.getRemovedFields}")
+
+    completeTask(ElasticApi.updateExistingIndex(updatedId, "bank/account", im.fromDocument(doc.getFullDocument)))
+    //TODO check if works with only updatesd fields passed through
+  }
+
+  private def storeNewIndex(doc: ChangeStreamDocument[Document]): Unit = {
+
+    logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
+    logger.info(s"${Console.GREEN} Data: ${doc.getFullDocument}")
+
+    completeTask(ElasticApi.storeIntoIndex(im.fromDocument(doc.getFullDocument), "bank/account"))
+    //TODO fix Implicit Task Converters
+  }
+
+  private def deleteIndex(doc: ChangeStreamDocument[Document]): Unit = {
+    val deletedId: String = doc.getDocumentKey.get("_id").asObjectId().getValue.toString
+
+    logger.info(s"${Console.MAGENTA} ${doc.getOperationType.getValue.toUpperCase}")
+    logger.info(s"${Console.GREEN} Deleted: $deletedId")
+
+    completeTask(ElasticApi.deleteFromIndex(deletedId, "bank/account"))
+    //TODO add staticly defined enum Mappings for collectionName to Elastic index name
   }
 }

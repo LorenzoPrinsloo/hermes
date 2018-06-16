@@ -4,11 +4,11 @@ object Indexable {
 
   sealed trait ElasticIndexable
 
-  case class Account(account_number: Int,
-                     balance: BigDecimal,
+  case class Account(account_number: Double,
+                     balance: Double,
                      firstName: String,
                      lastName: String,
-                     age: Int,
+                     age: Double,
                      gender: String,
                      address: String,
                      employer: String,

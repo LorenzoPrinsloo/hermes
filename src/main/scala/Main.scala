@@ -16,6 +16,7 @@ import scala.util.{Failure, Success}
 object Main extends App {
 
   implicit val logger: Logger = LoggerFactory.getLogger(Main.getClass)
+  logger.info(s"${Console.WHITE} INIT LOGGER")
 
   Mongo.connect()
 
