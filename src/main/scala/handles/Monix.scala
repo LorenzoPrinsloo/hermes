@@ -1,6 +1,6 @@
 package handles
 
-import main.Main.logger
+import com.fullfacing.apollo.data.mongo.logger
 import monix.eval.Task
 import monix.execution.Scheduler
 import monix.execution.Scheduler.Implicits.global
@@ -16,7 +16,7 @@ object Monix {
   implicit def completeTask[A <: AnyRef](x: Task[A])(implicit scheduler: Scheduler): Unit = {
     x.runOnComplete {
       case Success(res) => logger.info(s"${Console.MAGENTA} SUCCESS: \n${Console.GREEN} $res")
-      case Failure(err) => logger.error(s"${Console.RED} FAILURE \n${err.getMessage}")
+      case Failure(err) => logger.error(s"${Console.RED} FAILURE \n${err.getMessage} \n ${err.getStackTrace}")
     }(global)
   }
 }
