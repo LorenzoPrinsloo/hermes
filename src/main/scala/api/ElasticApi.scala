@@ -1,27 +1,26 @@
 package api
 
-import com.sksamuel.elastic4s.ElasticDsl._
-import com.sksamuel.elastic4s.IndexAndType
-import com.sksamuel.elastic4s.index.RichIndexResponse
-import com.sksamuel.elastic4s.searches.RichSearchResponse
-import monix.eval.Task
-import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
-import handles.Elastic.client
-import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
-import org.json4s.jackson.Serialization.{read, write}
 import cats.implicits._
 import com.fullfacing.apollo.core.protocol.internal.ErrorPayload
-import com.fullfacing.apollo.core.protocol.{DomainModel, ResponseCode, SingleResponse}
-import com.sksamuel.elastic4s.update.RichUpdateResponse
-import org.elasticsearch.action.delete.DeleteResponse
-import handles.Elastic.classToIndexable
+import com.fullfacing.apollo.core.protocol.{ResponseCode, SingleResponse}
+import com.sksamuel.elastic4s.ElasticDsl._
+import com.sksamuel.elastic4s.{IndexAndType, Indexable}
+import com.sksamuel.elastic4s.index.RichIndexResponse
 import com.sksamuel.elastic4s.mappings.MappingDefinition
+import com.sksamuel.elastic4s.searches.RichSearchResponse
+import com.sksamuel.elastic4s.update.RichUpdateResponse
+import handles.Elastic.client
+import interfaces.Indexable.ElasticDomainModel
+import com.fullfacing.common.tcs.serializers.SerializationFormats.formats
+import monix.eval.Task
+import org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse
+import org.elasticsearch.action.delete.DeleteResponse
+import org.elasticsearch.action.support.WriteRequest.RefreshPolicy
+import org.json4s.jackson.Serialization.{read, write}
 import org.json4s.{DefaultFormats, Formats}
 
 object ElasticApi {
-
-  implicit val formats: Formats = DefaultFormats
 
   def searchQ(indx: IndexAndType, searchQuery: String): Task[Either[ErrorPayload, SingleResponse[RichSearchResponse]]] = {
     client.flatMap(cl =>
@@ -31,11 +30,13 @@ object ElasticApi {
     ).map(res => SingleResponse(res, ResponseCode.Ok, "Ok").asRight)
   }
 
-  def storeIntoIndex[A <: DomainModel](indexItem: A, iName: IndexAndType): Task[RichIndexResponse] = {
+  def storeIntoIndex[A <: ElasticDomainModel](indexItem: A, iName: IndexAndType): Task[RichIndexResponse] = {
+    val itemId = indexItem.id.getOrElse("")
+    val map = read[Map[String, Any]](write(indexItem))
     client.flatMap(cl =>
       Task.deferFuture(
         cl.execute {
-          indexInto(iName) fields read[Map[String, Any]](write(indexItem)) id indexItem.id.getOrElse("") refresh RefreshPolicy.IMMEDIATE
+          indexInto(iName) fields map id itemId refresh RefreshPolicy.IMMEDIATE
         }
       )
     )
@@ -51,11 +52,13 @@ object ElasticApi {
     ).map(res => SingleResponse(res, ResponseCode.Ok, "Ok").asRight)
   }
 
-  def updateExistingIndex[A <: DomainModel](id: String, indx: IndexAndType, document: A): Task[RichUpdateResponse] = {
+  def updateExistingIndex[A <: ElasticDomainModel](id: String, indx: IndexAndType, document: A): Task[RichUpdateResponse] = {
     client.flatMap(cl =>
       Task.deferFuture(
         cl.execute {
-          update(id).in(indx).doc(document)(classToIndexable(document))
+          update(id)
+            .in(indx)
+            .doc(write(document))
         }
       )
     )
@@ -73,7 +76,7 @@ object ElasticApi {
     *             )
     * @return Task[CreateIndexResponse]
     */
-  def createNewIndex(indx: IndexAndType, map: Seq[MappingDefinition]): Task[CreateIndexResponse] = {
+  def createNewIndex(indx: IndexAndType, map: MappingDefinition): Task[CreateIndexResponse] = {
     client.flatMap(cl =>
       Task.deferFuture(
         cl.execute {

@@ -16,7 +16,7 @@ object Monix {
   implicit def completeTask[A <: AnyRef](x: Task[A])(implicit scheduler: Scheduler): Unit = {
     x.runOnComplete {
       case Success(res) => logger.info(s"${Console.MAGENTA} SUCCESS: \n${Console.GREEN} $res")
-      case Failure(err) => logger.error(s"${Console.RED} FAILURE \n${err.getMessage} \n ${err.getStackTrace}")
+      case Failure(err) => logger.error(s"${Console.RED} FAILURE \n${err.getMessage}")
     }(global)
   }
 }
