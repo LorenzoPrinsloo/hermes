@@ -25,12 +25,6 @@ object HttpApi extends ApolloHttpService("v1" - "elastic") {
           parameters('query.as[String], 'indx.as[String])((searchQuery, indx) =>
             onCompleteWithResponse(onCompleteWithResponseStrict(ElasticApi.searchQ(indx, searchQuery)))
           )
-
-        } ~
-        path("delete") {
-          parameters('id.as[String], 'indx.as[String])((id, indx) =>
-            onCompleteWithResponse(onCompleteWithResponseStrict(ElasticApi.deleteFromIndex(id, indx)))
-          )
         }
     }
 

@@ -17,5 +17,5 @@ object Mongo extends MongoConfiguration with ResourceHandle with AccountReposito
 
   override implicit val cAccounts: Mongo.AccountCollection = new AccountCollection()
 
-  override def connect(): Task[Unit] = database.map(_ => cAccounts.initStream())
+  override def connect(): Task[Unit] = database.map(_ => ())
 }
